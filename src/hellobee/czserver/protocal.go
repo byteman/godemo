@@ -10,7 +10,6 @@ import (
 	models "hellobee/models"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/mahonia"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -76,57 +75,28 @@ type ProtoParser struct {
 	Header   MsgHead
 	waitHead bool
 }
+type Message struct {
+	Head MsgHead
+	Val  interface{}
+}
 
 const (
-	CMD_ONE_WEIGHT   = 1
-	CMD_TOTAL_WEIGHT = 2
-	CMD_WATER_WEIGHT = 3
+	CMD_DEV2HOST_ONE_WEIGHT   = 1
+	CMD_DEV2HOST_ALL_WEIGHT   = 2
+	CMD_DEV2HOST_WATER_WEIGHT = 3
+	CMD_DEV2HOST_GPS          = 4
+	CMD_DEV2HOST_DEVINFO      = 5
+	CMD_DEV2HOST_HEART        = 6
+	CMD_UPDATE                = 7
+	CMD_RESET                 = 8
+	CMD_VER                   = 9
+	CMD_REALTIME_WEIGHT       = 10
+	CMD_GPS                   = 11
+	CMD_GPS_REPORT_TIME       = 12 //轨迹上发时间间隔
+	CMD_DEV_REPORT_TIME       = 13 //设备运行情况上发时间间隔
+	CMD_DEV_ONLINE            = 14 //上报设备信息.
 )
 
-func fmtDate(dt DateDef) string {
-	return fmt.Sprintf("%04d-%02d-%02d %02d:%02d:%02d", 2000+int(dt.Year), dt.Month, dt.Day, dt.Hour, dt.Min, dt.Sec)
-}
-func fmtGps(gps GpsDef) string {
-	return fmt.Sprintf("%.6f,%.6f,%c,%c", gps.Latitude, gps.Longitude, gps.Ew, gps.Ns)
-}
-func insertOneWeight(pwt *PointWet) {
-	msg := new(models.OneWeight)
-	enc := mahonia.NewDecoder("GBK")
-	src := string(pwt.Plate[:])
-	msg.WType = 1
-	msg.Weight = pwt.Wet
-	msg.LicensePlate = enc.ConvertString(src)
-
-	src = string(pwt.Duty[:])
-	msg.Duty = enc.ConvertString(src)
-
-	msg.UpDate = fmtDate(pwt.UpDate)
-	msg.WetDate = fmtDate(pwt.Wdate)
-	msg.Gps = fmtGps(pwt.Gps)
-	o := orm.NewOrm()
-	o.Using("default") // 默认使用 default，你可以指定为其他数据库
-	_, err := o.Insert(msg)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-func insertCommonWeight(pwt *CommWeight, WType int32) {
-	msg := new(models.OneWeight)
-	enc := mahonia.NewDecoder("GBK")
-	src := string(pwt.Plate[:])
-	msg.Weight = pwt.Wet
-	msg.WType = WType
-	msg.LicensePlate = enc.ConvertString(src)
-	msg.Gps = fmtGps(pwt.Gps)
-	msg.UpDate = fmtDate(pwt.UpDate)
-
-	o := orm.NewOrm()
-	o.Using("default") // 默认使用 default，你可以指定为其他数据库
-	_, err := o.Insert(msg)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
 func unSerial(data []byte, n uint16, msg interface{}) bool {
 
 	r := bytes.NewReader(data[:n])
@@ -138,41 +108,42 @@ func unSerial(data []byte, n uint16, msg interface{}) bool {
 	fmt.Print("%v", msg)
 	return true
 }
-func handleMsg(head MsgHead, d []byte, n uint16) {
+
+func parseMsg(head MsgHead, d []byte, n uint16) Message {
 	fmt.Println("handle msgtype ", head.Cmd)
+	msg := Message{Head: head, Val: nil}
 	switch head.Cmd {
-	case CMD_ONE_WEIGHT:
+	case CMD_DEV2HOST_ONE_WEIGHT:
 
 		pwt := &PointWet{}
 
 		if unSerial(d, n, pwt) {
-			insertOneWeight(pwt)
+			msg.Val = pwt
 		}
 
-		break
-	case CMD_TOTAL_WEIGHT:
+	case CMD_DEV2HOST_ALL_WEIGHT:
+		fallthrough
+	case CMD_DEV2HOST_WATER_WEIGHT:
 		pwt := &CommWeight{}
 		if unSerial(d, n, pwt) {
-			insertCommonWeight(pwt, int32(head.Cmd))
+			msg.Val = pwt
 		}
-		break
-	case CMD_WATER_WEIGHT:
-		pwt := &CommWeight{}
-		if unSerial(d, n, pwt) {
-			insertCommonWeight(pwt, int32(head.Cmd))
-		}
-		break
-
+	case CMD_DEV_ONLINE:
+		id := utils.BytesToUint16(d)
+		msg.Val = id
+	case CMD_DEV2HOST_HEART:
 	}
+	return msg
 }
 
 //分析数据协议.
-func (p *ProtoParser) Prase(data []byte, n int) {
+func (p *ProtoParser) Prase(data []byte, n int) []Message {
 	fmt.Printf("%d %d\n", len(p.Data), n)
 	for i := 0; i < n; i++ {
 		p.Data = append(p.Data, data[i])
 	}
 	fmt.Println("come here")
+	var msgList = []Message{}
 	for {
 		fmt.Println("len", len(p.Data))
 		if len(p.Data) <= 0 {
@@ -205,10 +176,14 @@ func (p *ProtoParser) Prase(data []byte, n int) {
 				fmt.Println("crc error")
 			}
 			p.Data = p.Data[7 : 7+p.Header.Len]
-			handleMsg(p.Header, p.Data, p.Header.Len)
+			msg := parseMsg(p.Header, p.Data, p.Header.Len)
+
+			msgList = append(msgList, msg)
+
 			p.Data = p.Data[p.Header.Len:]
 		}
 	}
+	return msgList
 }
 
 func init() {
