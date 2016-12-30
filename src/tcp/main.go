@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"utils"
 )
 
 func handleConn(c net.Conn) {
@@ -19,7 +20,10 @@ func handleConn(c net.Conn) {
 			fmt.Println("recv 0")
 			break
 		}
-		fmt.Println("read len= ", n)
+		nn := utils.BytesToInt(b)
+
+		fmt.Println("read len= ", n, nn)
+		fmt.Printf("%x", nn)
 		s := string(b)
 		fmt.Println(s)
 	}
