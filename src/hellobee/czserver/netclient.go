@@ -54,27 +54,28 @@ func handleOnline(devid uint16) {
 
 }
 func handleMsg(msg Message, con net.Conn) {
+	fmt.Println("cmd=", msg.Head.Cmd)
 	switch msg.Head.Cmd {
 	case CMD_DEV2HOST_ONE_WEIGHT:
-		var p PointWet
-		switch v := msg.Val.(type) {
-		case PointWet:
-			p = v
+		//var p PointWet
 
-			insertOneWeight(&p)
+		p, ok := msg.Val.(*PointWet)
+		if !ok {
+			fmt.Println("convt PointWet failed", p)
+			return
 		}
+		insertOneWeight(p)
 
 	case CMD_DEV2HOST_ALL_WEIGHT:
 		fallthrough
 	case CMD_DEV2HOST_WATER_WEIGHT:
 
-		var c CommWeight
-		switch v := msg.Val.(type) {
-		case CommWeight:
-			c = v
-
-			insertCommonWeight(&c, int32(msg.Head.Cmd))
+		p, ok := msg.Val.(*CommWeight)
+		if !ok {
+			fmt.Println("convt CommWeight failed", p)
+			return
 		}
+		insertCommonWeight(p, int32(msg.Head.Cmd))
 
 	case CMD_DEV_ONLINE:
 		var c uint16
@@ -85,6 +86,8 @@ func handleMsg(msg Message, con net.Conn) {
 			handleOnline(c)
 		}
 	case CMD_DEV2HOST_HEART:
+	default:
+		fmt.Println("unkown cmd")
 	}
 }
 func (cli *NetClient) Handle(data []byte, n int) (err bool) {

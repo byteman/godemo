@@ -53,6 +53,6 @@ func startTcpServer() {
 func main() {
 
 	go startTcpServer()
-	beego.SetStaticPath("/static/html", "device")
+	beego.SetStaticPath("/static", "static")
 	beego.Run()
 }
