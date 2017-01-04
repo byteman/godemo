@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
 	"github.com/mahonia"
 	_ "github.com/mattn/go-sqlite3"
@@ -19,13 +20,16 @@ type NetClient struct {
 	Device DevInfo
 }
 type DevInfo struct {
-	DevID      uint16
-	IpAddr     string
-	Plate      string
-	OnDateTime string
+	DevID  uint16
+	IpAddr string
+	Plate  string
+	//OnDateTime string
+	timeStamp time.Time
+	UnixTime  int64
 }
 type DevInfoList []DevInfo
 
+var timeoutS int = 120
 var clientList map[string]*NetClient = make(map[string]*NetClient, 100)
 var mutex sync.Mutex
 
@@ -38,8 +42,8 @@ func CreateClient(con net.Conn) (client *NetClient) {
 	cli.parser.Data = make([]byte, 0, 512)
 	cli.parser.waitHead = true
 	cli.Device.IpAddr = con.RemoteAddr().String()
-	cli.Device.OnDateTime = time.Now().String()
-
+	//cli.Device.OnDateTime = time.Now().String()
+	cli.Device.timeStamp = time.Now()
 	mutex.Lock()
 	defer mutex.Unlock()
 	clientList[con.RemoteAddr().String()] = cli
@@ -53,8 +57,36 @@ func RemoveClient(con net.Conn) {
 func handleOnline(devid uint16) {
 
 }
+func resetTimeout(con net.Conn) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _, ok := clientList[con.RemoteAddr().String()]; ok { //存在}
+		fmt.Println("reset timeout")
+		clientList[con.RemoteAddr().String()].Device.timeStamp = time.Now()
+	}
+}
+func handleTimeout() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	//dead := make([]string, 10)
+	for _, value := range clientList {
+		//fmt.Printf("%s->%-10s", key, value)
+		diff := time.Now().Sub(value.Device.timeStamp)
+		//fmt.Println(diff)
+		s := time.Duration(timeoutS) * time.Second
+		if diff > s {
+			fmt.Println(value.Device.IpAddr, " timeout")
+			value.Con.Close()
+			//dead = append(dead, value.Device.IpAddr)
+		}
+	}
+	//	for _, v := range dead {
+	//		delete(clientList, v)
+	//	}
+}
 func handleMsg(msg Message, con net.Conn) {
 	fmt.Println("cmd=", msg.Head.Cmd)
+	resetTimeout(con)
 	switch msg.Head.Cmd {
 	case CMD_DEV2HOST_ONE_WEIGHT:
 		//var p PointWet
@@ -107,6 +139,7 @@ func GetClient() DevInfoList {
 	infos := DevInfoList{}
 	for k, v := range clientList {
 		fmt.Println(k, v)
+		v.Device.UnixTime = v.Device.timeStamp.Unix() * 1000
 
 		infos = append(infos, v.Device)
 
@@ -159,4 +192,39 @@ func insertCommonWeight(pwt *CommWeight, WType int32) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+func onlineTimeout(input chan bool) {
+	t1 := time.NewTimer(time.Second * 5)
+	//	t2 := time.NewTimer(time.Second * 10)
+	var msg bool = false
+	for {
+		select {
+		case msg = <-input:
+			println(msg)
+			if msg {
+				fmt.Println("exit online timeout")
+				break
+			}
+
+		case <-t1.C:
+			//println("5s timer")
+			handleTimeout()
+			t1.Reset(time.Second * 5)
+
+			//		case <-t2.C:
+			//			println("10s timer")
+			//			t2.Reset(time.Second * 10)
+		}
+	}
+}
+
+var quit chan bool
+var Cfg = beego.AppConfig
+
+func init() {
+
+	timeoutS, _ = Cfg.Int("timeout")
+
+	fmt.Println("timeout = ", timeoutS)
+	go onlineTimeout(quit)
 }

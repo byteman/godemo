@@ -76,7 +76,7 @@ func (c *WeightController) Get() {
 	all, pagesize, rs := GetPagesInfo("one_weight", page, 10, "")
 
 	//o := orm.NewOrm()
-	ws := make([]models.OneWeight, 30)
+	ws := make([]models.OneWeight, 0)
 
 	//sql := "select * from one_weight order by id desc limit 10"
 	//fmt.Println(sql)
@@ -99,7 +99,7 @@ func (c *WeightController) Get() {
 func (c *OnlineController) Get() {
 
 	clients := czserver.GetClient()
-	fmt.Println("client=", clients)
+	//fmt.Println("client=", clients)
 	c.Data["json"] = &clients
 	c.ServeJSON()
 
