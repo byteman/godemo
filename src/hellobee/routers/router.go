@@ -10,4 +10,5 @@ func init() {
 	//beego.Router("/", &controllers.WeightController{})
 	beego.Router("/weight", &controllers.WeightController{})
 	beego.Router("/online", &controllers.OnlineController{})
+	beego.Router("/params", &controllers.ParamController{})
 }

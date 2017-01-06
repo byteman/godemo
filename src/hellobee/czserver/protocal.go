@@ -60,6 +60,14 @@ type PointWet struct {
 	UpDate DateDef           // 发送的实时日期时间.
 }
 
+type DevicePara struct {
+	DeviceId  uint16
+	Version   uint32
+	GpsReport uint8
+	DevReport uint8
+	Plate     [LICENSE_LEN]byte
+}
+
 func (h *MsgHead) Init(d []byte) {
 
 	err := binary.Read(bytes.NewReader(d), binary.LittleEndian, h)
@@ -129,8 +137,11 @@ func parseMsg(head MsgHead, d []byte, n uint16) Message {
 			msg.Val = pwt
 		}
 	case CMD_DEV_ONLINE:
-		id := utils.BytesToUint16(d)
-		msg.Val = id
+		dev := &DevicePara{}
+		if unSerial(d, n, dev) {
+			msg.Val = dev
+		}
+
 	case CMD_DEV2HOST_HEART:
 	}
 	return msg

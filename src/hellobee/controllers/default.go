@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"hellobee/czserver"
 	"hellobee/models"
@@ -18,6 +19,9 @@ type WeightController struct {
 }
 
 type OnlineController struct {
+	beego.Controller
+}
+type ParamController struct {
 	beego.Controller
 }
 
@@ -103,4 +107,35 @@ func (c *OnlineController) Get() {
 	c.Data["json"] = &clients
 	c.ServeJSON()
 
+}
+
+func (c *ParamController) Post() {
+	fmt.Println("params post")
+	u := czserver.DevInfo{}
+	res := make(map[string]interface{})
+	result := 0
+	message := "ok"
+	defer func() {
+		res["result"] = result
+		res["message"] = message
+		c.Data["json"] = res
+		c.ServeJSON()
+	}()
+	fmt.Println(c.Ctx.Input.RequestBody)
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &u)
+	if err != nil {
+		fmt.Println(err)
+		result = 1
+		message = "json convert failed"
+		return
+	}
+
+	fmt.Println(u)
+
+}
+func (c *ParamController) Get() {
+	fmt.Println("params get")
+	clients := czserver.GetClient()
+	c.Data["json"] = &clients
+	c.ServeJSON()
 }

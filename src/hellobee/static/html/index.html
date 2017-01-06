@@ -10,6 +10,7 @@
 	<script src="https://cdn.static.runoob.com/libs/jquery/2.1.1/jquery.min.js"></script>
 	<script src="https://cdn.static.runoob.com/libs/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 	<script src="http://apps.bdimg.com/libs/angular-route/1.3.13/angular-route.js"></script>
+
 	<script src="angular-bmap.js"></script>
 	<style>
 		#topbar{
@@ -125,6 +126,14 @@ app.filter('myfilter', function() {
       return res;
 	}
 });
+
+ app.filter('version', function(){
+    return function(n) {
+      var ver = "ver{0}.{1}.{2}".format([(n<<16)&0xff,(n<<8)&0xff,n&0xff]);;
+	  
+      return ver;
+	}
+});
 app.controller('weightCtrl', function($scope, $http) {
     
 	
@@ -199,6 +208,32 @@ app.controller('OnLineCtrl', function($scope, $http,$interval) {
 
 		}
     );
+	$scope.save = function() {
+	var par = $scope.dev;
+	
+    $http({
+        method  : 'POST',
+        url     : '/params',
+        data    : par,  // pass in data as strings
+        headers : { 'Content-Type': 'application/x-www-form-urlencoded' }  // set the headers so angular passing info as form data (not request payload)
+    }).success(function(data) {
+			console.log(data.result);
+
+			if (data.result) {
+				// if not successful, bind errors to error variables
+				
+			} else {
+				// if successful, bind success message to message
+				$scope.message = data.message;
+				$('#myModal').modal("hide");
+			}
+		});
+	};
+	$scope.getparam = function(index){
+		$('#myModal').modal();
+		$scope.dev = $scope.data[index];
+		console.log("select"+index,$scope.dev)
+	}
 });
 app.controller('ParamCtrl', function($scope, $http) {
     

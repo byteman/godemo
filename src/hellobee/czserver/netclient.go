@@ -20,12 +20,15 @@ type NetClient struct {
 	Device DevInfo
 }
 type DevInfo struct {
-	DevID  uint16
-	IpAddr string
-	Plate  string
+	DeviceId  uint16
+	Version   string
+	GpsReport uint8
+	DevReport uint8
+	Plate     string
 	//OnDateTime string
 	timeStamp time.Time
 	UnixTime  int64
+	IpAddr    string
 }
 type DevInfoList []DevInfo
 
@@ -54,8 +57,21 @@ func RemoveClient(con net.Conn) {
 	defer mutex.Unlock()
 	delete(clientList, con.RemoteAddr().String())
 }
-func handleOnline(devid uint16) {
+func handleOnline(ipaddr string, dev *DevicePara) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if _, ok := clientList[ipaddr]; ok { //存在}
+		fmt.Println("handle online")
+		clientList[ipaddr].Device.DeviceId = dev.DeviceId
+		clientList[ipaddr].Device.DevReport = dev.DevReport
+		clientList[ipaddr].Device.GpsReport = dev.GpsReport
 
+		enc := mahonia.NewDecoder("GBK")
+		src := string(dev.Plate[:])
+
+		clientList[ipaddr].Device.Plate = enc.ConvertString(src)
+		clientList[ipaddr].Device.Version = fmt.Sprintf("v%d.%d.%d", (dev.Version>>16)&0xff, (dev.Version>>8)&0xff, dev.Version&0xff)
+	}
 }
 func resetTimeout(con net.Conn) {
 	mutex.Lock()
@@ -110,13 +126,13 @@ func handleMsg(msg Message, con net.Conn) {
 		insertCommonWeight(p, int32(msg.Head.Cmd))
 
 	case CMD_DEV_ONLINE:
-		var c uint16
-		switch v := msg.Val.(type) {
-		case uint16:
-			c = v
-
-			handleOnline(c)
+		d, ok := msg.Val.(*DevicePara)
+		if !ok {
+			fmt.Println("convt DevicePara failed", d)
+			return
 		}
+		handleOnline(con.RemoteAddr().String(), d)
+
 	case CMD_DEV2HOST_HEART:
 	default:
 		fmt.Println("unkown cmd")
@@ -137,14 +153,14 @@ func GetClient() DevInfoList {
 	defer mutex.Unlock()
 	//infos := make([]DevInfo, 0, 30)
 	infos := DevInfoList{}
-	for k, v := range clientList {
-		fmt.Println(k, v)
+	for _, v := range clientList {
+		//fmt.Println(k, v)
 		v.Device.UnixTime = v.Device.timeStamp.Unix() * 1000
 
 		infos = append(infos, v.Device)
 
 	}
-	fmt.Println(infos)
+	//fmt.Println(infos)
 	return infos
 
 }

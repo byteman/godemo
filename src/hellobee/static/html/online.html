@@ -1,5 +1,7 @@
-		
-<div > 
+
+	
+<div> 
+
 
 <table class="table table-hover">
 	<caption></caption>
@@ -16,12 +18,13 @@
 	<tbody>
 		<tr ng-repeat="x in data |orderBy:['UnixTime','-deposit']:true">
 			<td>{{ $index+1 }}</td>
-			<td>{{ x.DevID }}</td>
+			<td>{{ x.DeviceId }}</td>
 			<td>{{ x.IpAddr }}</td>
 			<td>{{ x.Plate }}</td>
 			<td>{{ x.UnixTime|date:'yyyy-MM-dd HH:mm:ss' }}</td>
 			<td>
-				<a type="button" class="btn btn-small">参数设置</a>
+				
+				<a class="btn btn-small" data-toggle="modal" ng-click="getparam($index)">参数设置</a>
 				<a type="button" class="btn btn-small">升级设备</a>
 				<a type="button" class="btn btn-small"  href="/gps">车辆定位</a>
 			</td>
@@ -30,3 +33,70 @@
 </table>
 
 </div>   
+
+
+
+<!-- 模态框（Modal） -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" ng-app="myApp" ng-controller="OnLineCtrl">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+					&times;
+				</button>
+				<h4 class="modal-title" id="myModalLabel">
+					参数设置
+				</h4>
+			</div>
+			<div class="modal-body">
+				
+				<form class="form-horizontal">
+					<fieldset>
+					 
+					<div class="control-group">
+
+						  <!-- Text input-->
+						  <label class="control-label" for="input01">软件版本号</label>
+						  <div class="controls">
+							<input type="text" placeholder="软件版本号" class="input-xlarge" ng-model="dev.Version">
+							
+						  </div>
+						</div>
+
+					<div class="control-group">
+
+						  <!-- Text input-->
+						  <label class="control-label" for="input01">GPS上报间隔</label>
+						  <div class="controls">
+							<input type="number" placeholder="GPS上报间隔" class="input-xlarge" ng-model="dev.GpsReport">
+							
+						  </div>
+						</div>
+
+					<div class="control-group">
+
+						  <!-- Text input-->
+						  <label class="control-label" for="input01">设备上报间隔</label>
+						  <div class="controls">
+							<input type="number" placeholder="设备上报间隔" class="input-xlarge" ng-model="dev.DevReport">
+							
+						  </div>
+						</div>
+
+				
+					
+
+					</fieldset>
+				  </form>
+
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">关闭
+				</button>
+				<button type="button" class="btn btn-primary" ng-click="save()">
+					修改参数
+				</button>
+			</div>
+		</div><!-- /.modal-content -->
+	</div><!-- /.modal -->
+</div>
