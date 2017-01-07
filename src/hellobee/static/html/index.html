@@ -79,7 +79,7 @@ var app = angular.module('myApp', ['ngRoute']);
 
 app.config(function ($routeProvider) {
     $routeProvider.
-    when('/weight', {
+    when('/weight/:id?', {
         templateUrl: 'weight.html',
         controller: 'weightCtrl'
     }).
@@ -134,17 +134,22 @@ app.filter('myfilter', function() {
       return ver;
 	}
 });
-app.controller('weightCtrl', function($scope, $http) {
+app.controller('weightCtrl', function($scope, $http,$routeParams) {
     
-	
+	console.log("id=",$routeParams.id)
 	$scope.isActivePage = function(page){
 		return $scope.selPage == page;
 	}
 	
 	$scope.getPageData = function(page){
-		console.log("page=",page)
 		
-		$http.get("/weight?pages="+page)
+		var url = "/weight?pages="+page;
+		if($routeParams.id!=null)
+		{
+			url += "&id="+$routeParams.id;
+		}
+		console.log("url=",url);
+		$http.get(url)
 			.success(function (response) {
 			$scope.data = response.Weights;	
 			$scope.total= response.Total

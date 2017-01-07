@@ -26,7 +26,7 @@ type ParamController struct {
 }
 
 func (c *MainController) Get() {
-
+	c.Redirect("static/html/index.html", 301)
 }
 
 type JsonData struct {
@@ -51,8 +51,10 @@ func GetPagesInfo(tableName string, currentpage int, pagesize int, conditions st
 	}
 	var rs orm.RawSeter
 	o := orm.NewOrm()
-	var totalItem, totalpages int = 0, 0                                                          //总条数,总页数
-	o.Raw("SELECT count(*) FROM " + tableName + "  where 1>0 " + conditions).QueryRow(&totalItem) //获取总条数
+	var totalItem, totalpages int = 0, 0 //总条数,总页数
+	sql := "SELECT count(*) FROM " + tableName + "  where 1>0 " + conditions
+	o.Raw(sql).QueryRow(&totalItem) //获取总条数
+	fmt.Println(sql, totalItem)
 	if totalItem <= pagesize {
 		totalpages = 1
 	} else if totalItem > pagesize {
@@ -68,16 +70,19 @@ func GetPagesInfo(tableName string, currentpage int, pagesize int, conditions st
 
 func (c *WeightController) Get() {
 	fmt.Println("weight reqeust")
-
+	var cond = ""
 	page, err := c.GetInt("pages")
 	if err != nil {
 		fmt.Println(err)
-		//c.Ctx.WriteString("error param")
-		//return
+		page = 1
 	}
-	fmt.Println("page=", page)
+	id, err := c.GetInt("id")
+	if err == nil {
+		cond = fmt.Sprintf(" and dev_id=%d", id)
+	}
+	fmt.Println("page=", page, "id=", id)
 
-	all, pagesize, rs := GetPagesInfo("one_weight", page, 10, "")
+	all, pagesize, rs := GetPagesInfo("one_weight", page, 10, cond)
 
 	//o := orm.NewOrm()
 	ws := make([]models.OneWeight, 0)

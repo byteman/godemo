@@ -3,6 +3,7 @@ package models
 
 type OneWeight struct {
 	Id           int
+	DevId        int32
 	WType        int32
 	Weight       int32  // 单点重量、
 	WetDate      string `orm:"size(100)"` // 单点重量的获取日期时间、

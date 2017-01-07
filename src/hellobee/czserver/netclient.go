@@ -101,7 +101,7 @@ func handleTimeout() {
 	//	}
 }
 func handleMsg(msg Message, con net.Conn) {
-	fmt.Println("cmd=", msg.Head.Cmd)
+	fmt.Println("cmd=", msg.Head.Cmd, "id=", msg.Head.DevId)
 	resetTimeout(con)
 	switch msg.Head.Cmd {
 	case CMD_DEV2HOST_ONE_WEIGHT:
@@ -112,7 +112,7 @@ func handleMsg(msg Message, con net.Conn) {
 			fmt.Println("convt PointWet failed", p)
 			return
 		}
-		insertOneWeight(p)
+		insertOneWeight(msg.Head, p)
 
 	case CMD_DEV2HOST_ALL_WEIGHT:
 		fallthrough
@@ -123,7 +123,7 @@ func handleMsg(msg Message, con net.Conn) {
 			fmt.Println("convt CommWeight failed", p)
 			return
 		}
-		insertCommonWeight(p, int32(msg.Head.Cmd))
+		insertCommonWeight(msg.Head, p)
 
 	case CMD_DEV_ONLINE:
 		d, ok := msg.Val.(*DevicePara)
@@ -171,14 +171,14 @@ func fmtDate(dt DateDef) string {
 func fmtGps(gps GpsDef) string {
 	return fmt.Sprintf("%.6f,%.6f,%c,%c", gps.Latitude, gps.Longitude, gps.Ew, gps.Ns)
 }
-func insertOneWeight(pwt *PointWet) {
+func insertOneWeight(head MsgHead, pwt *PointWet) {
 	msg := new(models.OneWeight)
 	enc := mahonia.NewDecoder("GBK")
 	src := string(pwt.Plate[:])
 	msg.WType = 1
 	msg.Weight = pwt.Wet
 	msg.LicensePlate = enc.ConvertString(src)
-
+	msg.DevId = int32(head.DevId)
 	src = string(pwt.Duty[:])
 	msg.Duty = enc.ConvertString(src)
 
@@ -192,12 +192,13 @@ func insertOneWeight(pwt *PointWet) {
 		fmt.Println(err)
 	}
 }
-func insertCommonWeight(pwt *CommWeight, WType int32) {
+func insertCommonWeight(head MsgHead, pwt *CommWeight) {
 	msg := new(models.OneWeight)
 	enc := mahonia.NewDecoder("GBK")
 	src := string(pwt.Plate[:])
 	msg.Weight = pwt.Wet
-	msg.WType = WType
+	msg.WType = int32(head.Cmd)
+	msg.DevId = int32(head.DevId)
 	msg.LicensePlate = enc.ConvertString(src)
 	msg.Gps = fmtGps(pwt.Gps)
 	msg.UpDate = fmtDate(pwt.UpDate)
